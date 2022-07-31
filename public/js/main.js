@@ -6,7 +6,6 @@ const createRoom = () => {
     socket.on('roomCreated', room => {
         alert(`Szoba létrehozva a következő néven: ${room}`);
         document.cookie = `room=${room}`;
-        document.cookie = `creator=true`;
         window.location.href = '/game';
     })
 }
@@ -19,3 +18,5 @@ const joinRoom = () => {
         window.location.href = '/game';
     })
 }
+
+socket.on('error', err => {alert(err)})

@@ -18,9 +18,8 @@ function getCookie(cname) {
 }
 function editBoard(board){
     document.getElementById("buttons").innerHTML = "";
-    console.log("updating dom");
     for(var i = 0; i < board.length;i++){
-        document.getElementById("buttons").innerHTML += `<input type="button" id="${i}" onclick="placeOnBoard(${i})" value="${board[i].symbol}" />`;
+        document.getElementById("buttons").innerHTML += `<input type="button" id="${i}" onclick="placeOnBoard(${i})" value="${board[i].symbol}" />${(i+1) % 3 == 0 ? "<br>" : ""}`;
     }
 }
 socket.once("gamePageConnected", () => {
@@ -40,4 +39,15 @@ const placeOnBoard = (pos) =>{
 socket.on("charPlacedSuccessfully", (board) => {
     editBoard(board);
 })
+socket.on("win", (board, char) => {
+    editBoard(board);
+    alert(`${char} won!`);
+})
+socket.on("draw", (board) => {
+    editBoard(board);
+    alert("Draw!");
+})
+const gameEnded = () => {
+
+}
 socket.on("error", (err) => {alert(err)})

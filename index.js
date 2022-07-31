@@ -21,14 +21,56 @@ function generateRoomName() {
    }
    return result;
 }
-
+function drawCheck(board){
+    var hasEmpty = false;
+    board.forEach(element =>{
+        if(element.symbol == " "){
+            hasEmpty = true;
+        }
+    })
+    if(hasEmpty){
+        return false;
+    }
+    return true;
+}
+function winCheck(board){
+    if(board[0].symbol == board[1].symbol && board[1].symbol == board[2].symbol && board[0].symbol != " "){
+        return true;
+    }
+    if(board[3].symbol == board[4].symbol && board[4].symbol == board[5].symbol && board[3].symbol != " "){
+        return true;
+    }
+    if(board[6].symbol == board[7].symbol && board[7].symbol == board[8].symbol && board[6].symbol != " "){
+        return true;
+    }
+    if(board[0].symbol == board[3].symbol && board[3].symbol == board[6].symbol && board[0].symbol != " "){
+        return true;
+    }
+    if(board[1].symbol == board[4].symbol && board[4].symbol == board[7].symbol && board[1].symbol != " "){
+        return true;
+    }
+    if(board[2].symbol == board[5].symbol && board[5].symbol == board[8].symbol && board[2].symbol != " "){
+        return true;
+    }
+    if(board[0].symbol == board[4].symbol && board[4].symbol == board[8].symbol && board[0].symbol != " "){
+        return true;
+    }
+    if(board[2].symbol == board[4].symbol && board[4].symbol == board[6].symbol && board[2].symbol != " "){
+        return true;
+    }
+    return false;
+}
 io.on('connection', socket => {
     const scheme = fs.readFileSync('public/json/scheme.json');
     socket.emit("gamePageConnected");
     socket.on('createRoom', room => {
         const roomName = generateRoomName();
-        socket.emit('roomCreated', roomName);
-        fs.writeFile(`games/${roomName}.json`, scheme, (err) => {});
+        fs.readFile(`games/${roomname}.json`, (err, data) => { // Checks if game name already exists
+            if (err){
+                socket.emit('roomCreated', roomName);
+                fs.writeFile(`games/${roomName}.json`, scheme, (err) => {});
+            }
+        })
     })
     socket.on('joinRoom', room => {
         fs.readFile(`games/${room}.json`, (err, data) => { 
@@ -53,11 +95,27 @@ io.on('connection', socket => {
         fs.readFile(`games/${room}.json`, (err, data) => {
             const jsonFile = JSON.parse(data);
             const selected = jsonFile.board[pos];
+            const lastMove = jsonFile.lastMove;
+            if (lastMove == char){
+                socket.emit('error', "It's not your turn");
+                return;
+            };
             if (selected.symbol == " "){
                 jsonFile.board[pos].symbol = char;
+                jsonFile.lastMove = char;
                 const board = jsonFile.board;
                 fs.writeFile(`games/${room}.json`, JSON.stringify(jsonFile), (err) => {});
                 // socket.emit('charPlacedSuccessfully', board);
+                if(winCheck(board)){
+                    io.to(room).emit('win', board, char);
+                    return
+                }
+                else{
+                    if(drawCheck(board)){
+                        io.to(room).emit('draw', board);
+                        return
+                    }
+                }
                 io.to(room).emit('charPlacedSuccessfully', board);
             }
             else{
