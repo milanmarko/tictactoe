@@ -65,7 +65,7 @@ io.on('connection', socket => {
     socket.emit("gamePageConnected");
     socket.on('createRoom', room => {
         const roomName = generateRoomName();
-        fs.readFile(`games/${roomname}.json`, (err, data) => { // Checks if game name already exists
+        fs.readFile(`games/${roomName}.json`, (err, data) => { // Checks if game name already exists
             if (err){
                 socket.emit('roomCreated', roomName);
                 fs.writeFile(`games/${roomName}.json`, scheme, (err) => {});
@@ -105,7 +105,6 @@ io.on('connection', socket => {
                 jsonFile.lastMove = char;
                 const board = jsonFile.board;
                 fs.writeFile(`games/${room}.json`, JSON.stringify(jsonFile), (err) => {});
-                // socket.emit('charPlacedSuccessfully', board);
                 if(winCheck(board)){
                     io.to(room).emit('win', board, char);
                     return

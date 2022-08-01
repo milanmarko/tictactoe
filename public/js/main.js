@@ -2,7 +2,7 @@ const socket = io();
 
 
 const createRoom = () => {
-    socket.emit('createRoom', room);
+    socket.emit('createRoom', "dummy");
     socket.on('roomCreated', room => {
         alert(`Szoba létrehozva a következő néven: ${room}`);
         document.cookie = `room=${room}`;
@@ -11,7 +11,7 @@ const createRoom = () => {
 }
 
 const joinRoom = () => {
-    const room = document.getElementById('room').value;
+    const room = document.getElementById('roomNameTB').value;
     socket.emit('joinRoom', room);
     socket.on('roomJoined', board => {
         document.cookie = `room=${room}`;
