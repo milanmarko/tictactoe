@@ -1,5 +1,9 @@
 const socket = io();
 var charG = "";
+const turnDisplay = document.getElementById("turnDisplay");
+const newGameButton = document.getElementById("newGameButton");
+const mySymbol = document.getElementById("mySymbol");
+newGameButton.classList.add("disabled");
 
 function getCookie(cname) {
     let name = cname + "=";
@@ -16,38 +20,93 @@ function getCookie(cname) {
     }
     return "";
 }
-function editBoard(board){
-    document.getElementById("buttons").innerHTML = "";
-    for(var i = 0; i < board.length;i++){
-        document.getElementById("buttons").innerHTML += `<input type="button" id="${i}" onclick="placeOnBoard(${i})" value="${board[i].symbol}" />${(i+1) % 3 == 0 ? "<br>" : ""}`;
+function getPosition(i){
+    if (i % 3 == 0){
+        return "justify-content-end";
     }
+    if (i % 3 == 1){
+        return "justify-content-center";
+    }
+    if (i % 3 == 2){
+        return "justify-content-start";
+    }
+}
+function editBoard(board){
+    const gameElements = document.getElementById("gameElements");
+    const row1 = document.getElementById("row1");
+    const row2 = document.getElementById("row2");
+    const row3 = document.getElementById("row3");
+    row1.innerHTML = "";
+    row2.innerHTML = "";
+    row3.innerHTML = "";
+    
+    for(let i = 0; i < 3; i++){ // First row
+        row1.innerHTML += `<div class="col-4 d-flex ${getPosition(i)} text-center game-button-col"><input type="button" class="game-button" id="${i}" onclick="placeOnBoard(${i})" value="${board[i].symbol}" /></div>`
+    }
+    for(let i = 3; i < 6; i++){ // Second row
+        row2.innerHTML += `<div class="col-4 d-flex ${getPosition(i)} text-center game-button-col"><input type="button" class="game-button" id="${i}" onclick="placeOnBoard(${i})" value="${board[i].symbol}" /></div>`
+    }
+    for(let i = 6; i < 9; i++){ // Third row
+        row3.innerHTML += `<div class="col-4 d-flex ${getPosition(i)} text-center game-button-col"><input type="button" class="game-button" id="${i}" onclick="placeOnBoard(${i})" value="${board[i].symbol}" /></div>`
+    }
+
+}
+function disableGameButtons(){
+    document.querySelectorAll(".game-button").forEach(e => {
+        e.disabled = true;
+        e.classList.add("disabled")
+    })
+}
+const initNewGame = (room) => {
+    socket.emit("joinRoom", room);
+    socket.on("roomJoined", (board, char, alone) => {
+        charG = char;
+        mySymbol.innerText = char;
+        console.log(`Csatlakozva a következő szobához: ${room}`);
+        editBoard(board);
+        if (alone){
+            turnDisplay.innerText = "Egyedül vagy a szobában";
+        }
+        else{
+            turnDisplay.innerText = "A másik játékos következik";
+        }
+    })
 }
 socket.once("gamePageConnected", () => {
     const room = getCookie("room");
-    socket.emit("joinRoom", room);
-    socket.on("roomJoined", (board, char) => {
-        charG = char;
-        console.log(`Csatlakozva a következő szobához: ${room}`);
-        editBoard(board);
-    })
+    document.getElementById("roomName").innerText = room;
+    initNewGame(room);
 })
-
 const placeOnBoard = (pos) =>{
     socket.emit("placeOnBoard", pos, charG);
 }
-
-socket.on("charPlacedSuccessfully", (board) => {
+socket.on("gameReady", () => {
+    if (charG == "X"){
+        turnDisplay.innerText = "Te következel!";
+    }
+})
+socket.on("charPlacedSuccessfully", (board, char) => {
     editBoard(board);
+    const newDisplay = char == charG ? "A másik játékos következik" : "Te következel!";
+    turnDisplay.innerText = newDisplay;
 })
 socket.on("win", (board, char) => {
     editBoard(board);
-    alert(`${char} won!`);
+    turnDisplay.innerText = `${char} nyert!`;
+    newGameButton.classList.remove("disabled");
+    disableGameButtons();
 })
 socket.on("draw", (board) => {
     editBoard(board);
-    alert("Draw!");
+    turnDisplay.innerText = "Döntetlen!";
+    newGameButton.classList.remove("disabled");
+    disableGameButtons();
 })
-const gameEnded = () => {
-
+const newGame = () => {
+    socket.emit("gameOver", getCookie("room"));
 }
+socket.on("newGameReady", () => {
+    newGameButton.classList.add("disabled");
+    initNewGame(getCookie("room"));
+})
 socket.on("error", (err) => {alert(err)})

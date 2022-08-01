@@ -11,6 +11,7 @@ const port = process.env.PORT || 6969;
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 
+const scheme = fs.readFileSync('public/json/scheme.json');
 
 function generateRoomName() {
     var result           = '';
@@ -61,7 +62,6 @@ function winCheck(board){
     return false;
 }
 io.on('connection', socket => {
-    const scheme = fs.readFileSync('public/json/scheme.json');
     socket.emit("gamePageConnected");
     socket.on('createRoom', room => {
         const roomName = generateRoomName();
@@ -74,19 +74,34 @@ io.on('connection', socket => {
     })
     socket.on('joinRoom', room => {
         fs.readFile(`games/${room}.json`, (err, data) => { 
-            const board = JSON.parse(data).board;           
-            socket.join(room);
-            roomSize = io.sockets.adapter.rooms.get(room).size;
-            if (roomSize== 1){
-                char = "X";
-                socket.emit('roomJoined', board, char);
-            }
-            else if (roomSize == 2){
-                char = "O";
-                socket.emit('roomJoined', board, char);
+            var jsonFile = JSON.parse(data);
+            const board = jsonFile.board; 
+            console.log(jsonFile.isXLocked);
+            if(jsonFile.isXLocked){
+                socket.emit('roomJoined', board, "O");
             }
             else{
-                socket.emit('error', 'Room is full!');
+                jsonFile.isXLocked = true;
+                fs.writeFileSync(`games/${room}.json`, JSON.stringify(jsonFile));
+                socket.emit('roomJoined', board, "X");
+            }
+            socket.join(room);
+            roomSize = io.sockets.adapter.rooms.get(room).size;
+            console.log(roomSize);
+            // if (roomSize == 1){
+            //     char = "X";
+            //     socket.emit('roomJoined', board, char, true);
+            // } 
+            // else if (roomSize == 2){
+            //     char = "O";
+            //     io.to(room).emit("gameReady")
+            //     socket.emit('roomJoined', board, char, false);
+            // }
+            // else{
+            //     socket.emit('error', 'Room is full!');
+            // }
+            if(roomSize > 2){
+                socket.emit("error", "Room is full!");
             }
         })
     })
@@ -115,13 +130,16 @@ io.on('connection', socket => {
                         return
                     }
                 }
-                io.to(room).emit('charPlacedSuccessfully', board);
+                io.to(room).emit('charPlacedSuccessfully', board, char);
             }
             else{
                 socket.emit('error', 'Tile already used!');
             }
         })
-    })    
+    });
+    socket.on('gameOver', room => {
+        // TODO szar az egész
+    });
 })
 
 app.get('/', (req, res) => {
