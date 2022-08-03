@@ -79,6 +79,7 @@ io.on('connection', socket => {
             console.log(jsonFile.isXLocked);
             if(jsonFile.isXLocked){
                 socket.emit('roomJoined', board, "O");
+                io.to(room).emit('roomFull');
             }
             else{
                 jsonFile.isXLocked = true;
@@ -88,18 +89,6 @@ io.on('connection', socket => {
             socket.join(room);
             roomSize = io.sockets.adapter.rooms.get(room).size;
             console.log(roomSize);
-            // if (roomSize == 1){
-            //     char = "X";
-            //     socket.emit('roomJoined', board, char, true);
-            // } 
-            // else if (roomSize == 2){
-            //     char = "O";
-            //     io.to(room).emit("gameReady")
-            //     socket.emit('roomJoined', board, char, false);
-            // }
-            // else{
-            //     socket.emit('error', 'Room is full!');
-            // }
             if(roomSize > 2){
                 socket.emit("error", "Room is full!");
             }
@@ -122,11 +111,13 @@ io.on('connection', socket => {
                 fs.writeFile(`games/${room}.json`, JSON.stringify(jsonFile), (err) => {});
                 if(winCheck(board)){
                     io.to(room).emit('win', board, char);
+                    fs.writeFile(`games/${room}.json`, scheme, (err) => {});
                     return
                 }
                 else{
                     if(drawCheck(board)){
                         io.to(room).emit('draw', board);
+                        fs.writeFile(`games/${room}.json`, scheme, (err) => {});
                         return
                     }
                 }
@@ -136,9 +127,6 @@ io.on('connection', socket => {
                 socket.emit('error', 'Tile already used!');
             }
         })
-    });
-    socket.on('gameOver', room => {
-        // TODO szar az egész
     });
 })
 

@@ -53,3 +53,6 @@ body{
     color: white;
     cursor: not-allowed!important;
 }
+.selected{
+    border: 5px black solid;
+}
