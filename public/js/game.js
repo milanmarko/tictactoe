@@ -2,6 +2,8 @@ const socket = io();
 var charG = "";
 var selectedNum = 0;
 var areButtonsDisabled = false;
+var isVisitor = false;
+var lastPlaced = "X";
 
 const turnDisplay = document.getElementById("turnDisplay");
 const newGameButton = document.getElementById("newGameButton");
@@ -62,16 +64,26 @@ function disableGameButtons(){
 }
 const initNewGame = (room) => {
     socket.emit("joinRoom", room);
-    socket.on("roomJoined", (board, char) => {
-        charG = char;
-        mySymbol.innerText = char;
-        console.log(`Csatlakozva a következő szobához: ${room}`);
+    socket.on("roomJoined", (board, role, lastPlaced) => {
         editBoard(board);
-        if (char == "X"){
-            turnDisplay.innerText = "Egyedül vagy a szobában";
+        if (role == "visitor"){
+            if (confirm("Már csak nézőként férsz el ebben as zobában!\nÍgy is szeretnéd folytatni?")){
+                disableGameButtons();
+                isVisitor = true;
+                mySymbol.innerHTML = "Néző vagy!";
+                turnDisplay.innerText = lastPlaced == "X" ? "Jelenlegi lépő játékos: O" : "Jelenlegi lépő játékos: X";
+            }
         }
         else{
-            turnDisplay.innerText = "A másik játékos következik";
+            charG = role;
+            mySymbol.innerText = role;
+            console.log(`Csatlakozva a következő szobához: ${room}`);
+            if (role == "X"){
+                turnDisplay.innerText = "Egyedül vagy a szobában";
+            }
+            else{
+                turnDisplay.innerText = "A másik játékos következik";
+            }
         }
     })
 }
@@ -81,36 +93,58 @@ socket.once("gamePageConnected", () => {
     initNewGame(room);
 })
 const placeOnBoard = (pos) =>{
-    socket.emit("placeOnBoard", pos, charG);
+    if (isVisitor){
+        alert("Néző vagy!");
+    }
+    else{
+        socket.emit("placeOnBoard", pos, charG);
+    }
 }
-socket.on("roomFull", () => {
-    console.log("nyomja")
+socket.on("roomFull", (board) => {
     if (charG == "X"){
         turnDisplay.innerText = "Te következel!";
     }
 })
 socket.on("charPlacedSuccessfully", (board, char) => {
     editBoard(board);
-    const newDisplay = char == charG ? "A másik játékos következik" : "Te következel!";
+    lastPlaced = char;
+    var newDisplay;
+    if (charG != ""){
+        newDisplay = lastPlaced == charG ? "A másik játékos következik" : "Te következel!";
+    }
+    else{
+        newDisplay = lastPlaced == "X" ? "Jelenlegi játékos: O" : "Jelenlegi játékos: X";
+    }
     turnDisplay.innerText = newDisplay;
 })
 socket.on("win", (board, char) => {
     editBoard(board);
     turnDisplay.innerText = `${char} nyert!`;
-    newGameButton.classList.remove("disabled");
-    disableGameButtons();
+    if(!isVisitor){
+        newGameButton.classList.remove("disabled");
+        disableGameButtons();
+    }
+    else{
+        visitorNewGame();
+        turnDisplay.innerText += "\nVárakozás hogy a játékosok új játékot indítsanak";
+    }
 })
 socket.on("draw", (board) => {
     editBoard(board);
     turnDisplay.innerText = "Döntetlen!";
-    newGameButton.classList.remove("disabled");
-    disableGameButtons();
+    if(!isVisitor){
+        newGameButton.classList.remove("disabled");
+        disableGameButtons();
+    }
+    else{
+        visitorNewGame();
+        turnDisplay.innerText += "\nVárakozás hogy a játékosok új játékot indítsanak";
+    }
 })
 const newGame = () => {
     areButtonsDisabled = false;
     newGameButton.classList.add("disabled");
     initNewGame(getCookie("room"));
-    // socket.emit("gameOver", getCookie("room"));
 }
 const keyboardHandler = (e) => {
     const key = e.key;
@@ -122,61 +156,76 @@ const keyboardHandler = (e) => {
         }
         return;
     }
-    if (key == "ArrowLeft" || key == "a"){
-        try{
-            const previousL = selected;
-            selected = document.getElementById(`${selectedNum - 1}`);
-            if (selected != null){
-                previous = previousL;
-                selectedNum -= 1;
+    switch(key){
+        case "ArrowLeft" || "a":
+            try{
+                const previousL = selected;
+                selected = document.getElementById(`${selectedNum - 1}`);
+                if (selected != null){
+                    previous = previousL;
+                    selectedNum -= 1;
+                }
             }
-        }
-        catch{}
-    }
-    else if (key == "ArrowRight" || key == "d"){
-        try{
-            const previousL = selected;
-            selected = document.getElementById(`${selectedNum + 1}`);
-            if (selected != null){
-                previous = previousL;
-                selectedNum += 1;
+            catch{}
+            break;
+
+        case "ArrowRight" || "d":
+            try{
+                const previousL = selected;
+                selected = document.getElementById(`${selectedNum + 1}`);
+                if (selected != null){
+                    previous = previousL;
+                    selectedNum += 1;
+                }
             }
-        }
-        catch{}
-    }
-    else if (key == "ArrowUp" || key == "w"){
-        try{
-            const previousL = selected;
-            selected = document.getElementById(`${selectedNum - 3}`);
-            if (selected != null){
-                previous = previousL;
-                selectedNum -= 3;
+            catch{}
+            break;
+
+        case "ArrowUp" || "w":
+            try{
+                const previousL = selected;
+                selected = document.getElementById(`${selectedNum - 3}`);
+                if (selected != null){
+                    previous = previousL;
+                    selectedNum -= 3;
+                }
             }
-        }
-        catch{}
-    }
-    else if(key == "ArrowDown" || key == "s"){
-        try{
-            const previousL = selected;
-            selected = document.getElementById(`${selectedNum + 3}`);
-            if (selected != null){
-                previous = previousL;
-                selectedNum += 3;
+            catch{}
+            break;
+
+        case "arrowDown" || "s":
+            try{
+                const previousL = selected;
+                selected = document.getElementById(`${selectedNum + 3}`);
+                if (selected != null){
+                    previous = previousL;
+                    selectedNum += 3;
+                }
             }
-        }
-        catch{}     
-    }
-    else if (key == "Enter" || key == ""){
-        placeOnBoard(selectedNum);
-    }
-    else if (key == "r"){
-        newGame();
+            catch{}
+            break; 
+
+        case "Enter":
+            placeOnBoard(selectedNum);
+            break;
+        
+        case "r":
+            if (!isVisitor){
+                newGame();
+            }
+            break;
     }
     try{
         previous.classList.remove("selected");
         selected.classList.add("selected");
     }
     catch{}
+}
+const visitorNewGame = () => {
+    socket.on("roomFull", (board) => {
+        editBoard(board);
+        turnDisplay.innerText = "Jelenlegi játékos: X";
+    })
 }
 document.onkeyup = keyboardHandler;
 // socket.on("newGameReady", () => {

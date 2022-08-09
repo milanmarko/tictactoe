@@ -76,21 +76,23 @@ io.on('connection', socket => {
         fs.readFile(`games/${room}.json`, (err, data) => { 
             var jsonFile = JSON.parse(data);
             const board = jsonFile.board; 
-            console.log(jsonFile.isXLocked);
-            if(jsonFile.isXLocked){
-                socket.emit('roomJoined', board, "O");
-                io.to(room).emit('roomFull');
+            const lastPlaced = jsonFile.lastPlaced;
+            socket.join(room);
+            const roomSize = io.sockets.adapter.rooms.get(room).size;
+            if (roomSize > 2 && jsonFile.isGameFull){
+                socket.emit('roomJoined', board, "visitor", lastPlaced)
             }
             else{
-                jsonFile.isXLocked = true;
+                if(jsonFile.isXLocked){
+                    jsonFile.isGameFull = true;
+                    socket.emit('roomJoined', board, "O", lastPlaced);
+                    io.to(room).emit('roomFull', board);
+                }
+                else{
+                    jsonFile.isXLocked = true;
+                    socket.emit('roomJoined', board, "X", lastPlaced);
+                }
                 fs.writeFileSync(`games/${room}.json`, JSON.stringify(jsonFile));
-                socket.emit('roomJoined', board, "X");
-            }
-            socket.join(room);
-            roomSize = io.sockets.adapter.rooms.get(room).size;
-            console.log(roomSize);
-            if(roomSize > 2){
-                socket.emit("error", "Room is full!");
             }
         })
     })

@@ -29,5 +29,6 @@
         }
     ],
     "lastMove": "O",
-    "isXLocked": false
+    "isXLocked": false,
+    "isGameFull": false
 }
